@@ -11,17 +11,22 @@ import (
 
 	"golang.org/x/crypto/pbkdf2"
 
+	"github.com/armon/go-socks5"
 	"github.com/golang/snappy"
 	"github.com/urfave/cli"
 	kcp "github.com/xtaci/kcp-go"
 	"github.com/xtaci/yamux"
 )
 
+const SELFPROXY = "self"
+
 var (
 	// VERSION is injected by buildflags
 	VERSION = "SELFBUILD"
 	// SALT is use for pbkdf2 key expansion
 	SALT = "kcp-go"
+	// from https://github.com/buaazp/kcptun/blob/self-proxy/server/main.go
+	s5svr *socks5.Server
 )
 
 type compStream struct {
@@ -67,6 +72,13 @@ func handleMux(conn io.ReadWriteCloser, target string, config *yamux.Config) {
 			log.Println(err)
 			return
 		}
+
+		if target == SELFPROXY {
+			// self proxy socks5 requests
+			go s5svr.ServeConn(p1)
+			continue
+		}
+
 		sockbuf := int(config.MaxStreamWindowSize)
 		p2, err := net.DialTimeout("tcp", target, 5*time.Second)
 		if err != nil {
@@ -315,6 +327,13 @@ func main() {
 		log.Println("dscp:", config.DSCP)
 		log.Println("sockbuf:", config.SockBuf)
 		log.Println("keepalive:", config.KeepAlive)
+
+		if config.Target == SELFPROXY {
+			// socks5 proxy server in self proxy mode
+			conf := &socks5.Config{}
+			s5svr, err = socks5.New(conf)
+			checkError(err)
+		}
 
 		if err := lis.SetDSCP(config.DSCP); err != nil {
 			log.Println("SetDSCP:", err)

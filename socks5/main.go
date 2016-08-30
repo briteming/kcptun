@@ -15,13 +15,13 @@ func main() {
 		panic(err)
 	}
 
-	laddr := "127.0.0.1:12948"
+	laddr := ":12948"
 	if len(os.Args) > 1 {
 		laddr = os.Args[1]
 	}
 
 	if laddr == "-h" || len(os.Args) > 2 {
-		fmt.Printf("Usage: ./socks5 127.0.0.1:12948\n")
+		fmt.Printf("Usage: ./socks5 0.0.0.0:12948\n")
 		return
 	}
 

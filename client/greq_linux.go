@@ -2,9 +2,7 @@
 
 package main
 
-import (
-	"syscall"
-)
+import "syscall"
 
 const (
 	SO_ORIGINAL_DST = 80
@@ -16,9 +14,9 @@ func GetMreq(fd int) ([16]byte, error) {
 		return [16]byte{}, err
 	}
 
-	addr, err2 := syscall.GetsockoptIPv6Mreq(fd, syscall.IPPROTO_IP, SO_ORIGINAL_DST)
-	if err2 != nil {
-		return [16]byte{}, err2
+	addr, err := syscall.GetsockoptIPv6Mreq(fd, syscall.IPPROTO_IP, SO_ORIGINAL_DST)
+	if err != nil {
+		return [16]byte{}, err
 	} else {
 		return addr.Multiaddr, nil
 	}

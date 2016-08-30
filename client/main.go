@@ -303,6 +303,7 @@ func main() {
 		log.Println("keepalive:", config.KeepAlive)
 		log.Println("conn:", config.Conn)
 		log.Println("autoexpire:", config.AutoExpire)
+		log.Println("redir:", config.Redir)
 
 		smuxConfig := smux.DefaultConfig()
 		smuxConfig.MaxReceiveBuffer = config.SockBuf

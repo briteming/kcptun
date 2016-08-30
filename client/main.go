@@ -207,6 +207,11 @@ func main() {
 			Value: "", // when the value is not empty, the config path must exists
 			Usage: "config from json file, which will override the command from shell",
 		},
+		cli.StringFlag{
+			Name:  "redir",
+			Value: "",
+			Usage: "transparent support",
+		},
 	}
 	myApp.Action = func(c *cli.Context) error {
 		config := Config{}
@@ -231,6 +236,7 @@ func main() {
 		config.NoCongestion = c.Int("nc")
 		config.SockBuf = c.Int("sockbuf")
 		config.KeepAlive = c.Int("keepalive")
+		config.Redir = c.String("redir")
 
 		if c.String("c") != "" {
 			err := parseJsonConfig(&config, c.String("c"))
@@ -298,6 +304,10 @@ func main() {
 		log.Println("keepalive:", config.KeepAlive)
 		log.Println("conn:", config.Conn)
 		log.Println("autoexpire:", config.AutoExpire)
+
+		if config.Redir != "" {
+			go serverTrans(config.Redir, config.LocalAddr)
+		}
 
 		yconfig := &yamux.Config{
 			AcceptBacklog:          256,

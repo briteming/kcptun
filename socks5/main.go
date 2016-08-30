@@ -15,17 +15,17 @@ func main() {
 		panic(err)
 	}
 
-	laddr := ":9090"
+	laddr := "127.0.0.1:12948"
 	if len(os.Args) > 1 {
 		laddr = os.Args[1]
 	}
 
 	if laddr == "-h" || len(os.Args) > 2 {
-		fmt.Printf("Usage: ./socks5 0.0.0.0:9090\n")
+		fmt.Printf("Usage: ./socks5 127.0.0.1:12948\n")
 		return
 	}
 
-	// Create SOCKS5 proxy on localhost port 8000
+	// Create SOCKS5 proxy
 	if err := server.ListenAndServe("tcp", laddr); err != nil {
 		panic(err)
 	}

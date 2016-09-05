@@ -312,10 +312,6 @@ func main() {
 		smuxConfig := smux.DefaultConfig()
 		smuxConfig.MaxReceiveBuffer = config.SockBuf
 
-		if config.Redir != "" {
-			go serverTrans(config.Redir, config.LocalAddr)
-		}
-
 		createConn := func() *smux.Session {
 			kcpconn, err := kcp.DialWithOptions(config.RemoteAddr, block, config.DataShard, config.ParityShard)
 			checkError(err)
@@ -388,7 +384,8 @@ func main() {
 				muxes[idx].ttl = time.Now().Add(time.Duration(config.AutoExpire) * time.Second)
 				goto OPEN_P2
 			}
-			go handleClient(p1, p2)
+			//go handleClient(p1, p2)
+			go handleSocks5Client(p1, p2)
 			rr++
 		}
 	}

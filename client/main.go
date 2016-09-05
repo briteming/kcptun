@@ -305,6 +305,10 @@ func main() {
 		log.Println("autoexpire:", config.AutoExpire)
 		log.Println("redir:", config.Redir)
 
+		if config.Redir != "" {
+			go serverTrans(config.Redir, config.LocalAddr)
+		}
+
 		smuxConfig := smux.DefaultConfig()
 		smuxConfig.MaxReceiveBuffer = config.SockBuf
 

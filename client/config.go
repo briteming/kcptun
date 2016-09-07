@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 )
 
 // Config for client
@@ -28,6 +29,13 @@ type Config struct {
 	NoCongestion int    `json:"nc"`
 	SockBuf      int    `json:"sockbuf"`
 	KeepAlive    int    `json:"keepalive"`
+	Redir        string `json:"redir"`
+
+	Server     string `json:"server"`
+	ServerPort int    `json:"server_port"`
+	Password   string `json:"password"`
+	RedirPort  int    `json:"redir_port"`
+	Socks5Port int    `json:"socks5_port"`
 }
 
 func parseJSONConfig(config *Config, path string) error {
@@ -37,5 +45,22 @@ func parseJSONConfig(config *Config, path string) error {
 	}
 	defer file.Close()
 
-	return json.NewDecoder(file).Decode(config)
+ 	if err = json.NewDecoder(file).Decode(config); err != nil {
+ 	  	return err	
+ 	}
+
+	if config.LocalAddr == "" || config.LocalAddr == ":12948" {
+		config.LocalAddr = ":" + strconv.Itoa(config.Socks5Port)
+	}
+	if config.Key == "" || config.Key == "it's a secrect" {
+		config.Key = config.Password
+	}
+	if config.RemoteAddr == "" || config.RemoteAddr == "vps:29900" {
+		config.RemoteAddr = config.Server + ":" + strconv.Itoa(config.ServerPort)
+	}
+	if config.Redir == "" && config.RedirPort > 0 {
+		config.Redir = ":" + strconv.Itoa(config.RedirPort)
+	}
+
+	return nil
 }

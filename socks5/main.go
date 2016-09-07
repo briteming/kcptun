@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -9,6 +10,17 @@ import (
 	"net"
 	"os"
 	"strconv"
+
+	"github.com/armon/go-socks5"
+)
+
+const (
+	SocksVer5       = 5
+	SocksCmdConnect = 1
+)
+
+var (
+	s5svr *socks5.Server
 )
 
 func checkError(err error) {
@@ -16,6 +28,27 @@ func checkError(err error) {
 		log.Printf("%+v\n", err)
 		os.Exit(-1)
 	}
+}
+
+type bufferedConn struct {
+	r        *bufio.Reader
+	net.Conn // So that most methods are embedded
+}
+
+func newBufferedConn(c net.Conn) bufferedConn {
+	return bufferedConn{bufio.NewReader(c), c}
+}
+
+func newBufferedConnSize(c net.Conn, n int) bufferedConn {
+	return bufferedConn{bufio.NewReaderSize(c, n), c}
+}
+
+func (b bufferedConn) Peek(n int) ([]byte, error) {
+	return b.r.Peek(n)
+}
+
+func (b bufferedConn) Read(p []byte) (int, error) {
+	return b.r.Read(p)
 }
 
 func handleClient(p1, p2 io.ReadWriteCloser) {
@@ -44,15 +77,33 @@ func handleClient(p1, p2 io.ReadWriteCloser) {
 	}
 }
 
+func socks5ServerSel(conn bufferedConn) error {
+	if buf, err := conn.Peek(2); err != nil {
+		return err
+	} else {
+		if buf[0] == SocksVer5 && buf[1] == SocksCmdConnect {
+			//normal socks5 server
+			return s5svr.ServeConn(conn)
+		} else {
+			//shadowsocks like socks5 server, reduce latency
+			return handleSocks5(conn)
+		}
+	}
+}
+
 func handleSocks5(conn net.Conn) (err error) {
 	var host string
 	var extra []byte
+	var remote net.Conn = nil
 
 	closed := false
 	defer func() {
 		log.Println("closed", host)
 		if !closed {
 			conn.Close()
+			if remote != nil {
+				remote.Close()
+			}
 		}
 	}()
 
@@ -62,17 +113,10 @@ func handleSocks5(conn net.Conn) (err error) {
 		return
 	}
 
-	var remote *net.TCPConn
-	if addr, err2 := net.ResolveTCPAddr("tcp", host); err2 == nil {
-		remote, err = net.DialTCP("tcp", nil, addr)
-		if err != nil {
-			return
-		}
-	} else {
-		err = err2
+	remote, err = net.Dial("tcp", host)
+	if err != nil {
 		return
 	}
-	remote.SetNoDelay(false)
 
 	if extra != nil && len(extra) > 0 {
 		if _, err = remote.Write(extra); err != nil {
@@ -169,12 +213,15 @@ func main() {
 	checkError(err)
 	log.Println("listening socks5 on:", l.Addr())
 
+	conf := &socks5.Config{}
+	s5svr, err = socks5.New(conf)
+
 	for {
 		tcp_conn, err := l.AcceptTCP()
 		if err != nil {
 			log.Println(err)
 			return
 		}
-		go handleSocks5(tcp_conn)
+		go socks5ServerSel(newBufferedConn(tcp_conn))
 	}
 }
